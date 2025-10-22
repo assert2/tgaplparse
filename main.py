@@ -252,7 +252,6 @@ class TelegramParser:
                     if msg_compare < sd:
                         # пост старее чем требуемая дата — пропускаем / останавливаем (как у тебя)
                         break
-                # --- конец безопасного сравнения ---
 
                 if progress_callback:
                     progress_callback(f"Обработка поста {message.id}...")
@@ -945,4 +944,5 @@ def main():
 
 
 if __name__ == '__main__':
+
     main()
