@@ -1,68 +1,51 @@
-name: Build & Release App
+name: Build and Release App
 
 on:
   push:
     tags:
-      - 'v*' # запуск при создании тега, например v1.0.0
-  workflow_dispatch:
+      - "v*"
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Build Windows app
-        if: runner.os == 'Windows'
+      - name: Build app
         run: |
-          pyinstaller --noconsole --onefile --icon=icon.ico main.py
-          mkdir release
-          copy dist\main.exe release\MyApp_Windows.exe
-
-      - name: Build macOS app
-        if: runner.os == 'macOS'
-        run: |
-          pyinstaller --windowed --onedir --icon=icon.icns main.py
-          mkdir release
-          cd dist
-          zip -r ../release/MyApp_macOS.zip main.app
-
-      - name: Build Linux app
-        if: runner.os == 'Linux'
-        run: |
-          pyinstaller --noconsole --onefile --icon=icon.png main.py
-          mkdir release
-          mv dist/main release/MyApp_Linux
-
-          mkdir -p build-deb/DEBIAN
-          echo "Package: myapp
-Version: 1.0
-Section: base
-Priority: optional
-Architecture: amd64
-Maintainer: You <you@example.com>
-Description: My cross-platform app" > build-deb/DEBIAN/control
-
-          mkdir -p build-deb/usr/local/bin
-          cp release/MyApp_Linux build-deb/usr/local/bin/myapp
-          dpkg-deb --build build-deb release/MyApp_Linux.deb
+          mkdir -p release
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            pyinstaller --onefile --windowed --icon=icon.ico main.py
+            mv dist/main.exe release/
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            pyinstaller --onedir --windowed --icon=icon.icns main.py
+            cd dist && zip -r ../release/app-macos.zip main.app && cd ..
+          else
+            pyinstaller --onefile --icon=icon.png main.py
+            mv dist/main release/app-linux
+            # создать .deb пакет
+            mkdir -p deb/usr/local/bin
+            cp release/app-linux deb/usr/local/bin/
+            fpm -s dir -t deb -n myapp -v 1.0 deb/
+            mv *.deb release/
+          fi
+        shell: bash
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -71,6 +54,7 @@ Description: My cross-platform app" > build-deb/DEBIAN/control
           path: release/
 
   release:
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +66,7 @@ Description: My cross-platform app" > build-deb/DEBIAN/control
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/**/* 
+          files: release/**/*
           draft: false
           prerelease: false
         env:
