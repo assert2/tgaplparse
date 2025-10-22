@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
       - name: Checkout code
@@ -37,14 +37,6 @@ jobs:
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             pyinstaller --onedir --windowed --icon=icon.icns main.py
             cd dist && zip -r ../release/app-macos.zip main.app && cd ..
-          else
-            pyinstaller --onefile --icon=icon.png main.py
-            mv dist/main release/app-linux
-            # создать .deb пакет
-            mkdir -p deb/usr/local/bin
-            cp release/app-linux deb/usr/local/bin/
-            fpm -s dir -t deb -n myapp -v 1.0 deb/
-            mv *.deb release/
           fi
         shell: bash
 
